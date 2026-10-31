@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS Voice Assistant</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #030a16;
+            color: #e0f2fe;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            color: #38bdf8;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .status {
+            font-size: 0.9rem;
+            color: #7dd3fc;
+            margin-bottom: 40px;
+            opacity: 0.8;
+        }
+        /* Arc Reactor Core Visualizer */
+        .reactor-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .reactor-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px dashed #0284c7;
+            border-radius: 50%;
+            animation: rotateRing 20s linear infinite;
+        }
+        .reactor-core {
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, #38bdf8 0%, #0369a1 70%, transparent 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px #38bdf8, inset 0 0 20px #ffffff;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        /* Visual states triggered by JS */
+        .listening .reactor-core {
+            animation: pulseListening 1.2s ease-in-out infinite;
+            background: radial-gradient(circle, #22c55e 0%, #15803d 70%, transparent 100%);
+            box-shadow: 0 0 40px #22c55e, inset 0 0 20px #ffffff;
+        }
+        .speaking .reactor-core {
+            animation: pulseSpeaking 0.6s ease-in-out infinite;
+            background: radial-gradient(circle, #38bdf8 0%, #0284c7 70%, transparent 100%);
+            box-shadow: 0 0 50px #38bdf8, inset 0 0 20px #ffffff;
+        }
+        .schedule-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: left;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        .schedule-card h2 {
+            font-size: 1.1rem;
+            color: #38bdf8;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 5px;
+        }
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .task-time {
+            color: #7dd3fc;
+            font-weight: bold;
+        }
+        .task-name {
+            color: #94a3b8;
+        }
+        .task-item.active .task-name {
+            color: #38bdf8;
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+        }
+        button {
+            margin-top: 20px;
+            background: transparent;
+            border: 1px solid #38bdf8;
+            color: #38bdf8;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #38bdf8;
+            color: #030a16;
+            box-shadow: 0 0 15px #38bdf8;
+        }
+        @keyframes rotateRing {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes pulseListening {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.08); opacity: 1; }
+        }
+        @keyframes pulseSpeaking {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="appContainer">
+        <h1>JARVIS</h1>
+        <p class="status" id="statusText">Tap "Initialize" to boot systems</p>
+
+        <div class="reactor-container">
+            <div class="reactor-ring"></div>
+            <div class="reactor-core" id="reactorCore"></div>
+        </div>
+
+        <div class="schedule-card">
+            <h2>System Priorities & Schedule</h2>
+            <div id="scheduleList">
+                <!-- Schedule items populated dynamically -->
+            </div>
+        </div>
+
+        <button id="startBtn">Initialize JARVIS</button>
+    </div>
+
+    <script>
+        // 1. Define Your Real Daily Time Table / Schedule Here
+        const dailySchedule = [
+            { id: 1, start: "09:00", end: "12:00", name: "Programming & Project Work" },
+            { id: 2, start: "14:00", end: "16:00", name: "System Optimization & Review" },
+            { id: 3, start: "17:55", end: "20:00", name: "ILM UX Classes" },
+            { id: 4, start: "20:30", end: "22:00", name: "Gaming & Performance Testing" }
+        ];
+
+        const statusText = document.getElementById('statusText');
+        const appContainer = document.getElementById('appContainer');
+        const startBtn = document.getElementById('startBtn');
+        const scheduleList = document.getElementById('scheduleList');
+
+        // Render schedule to the user UI
+        function displaySchedule() {
+            scheduleList.innerHTML = '';
+            dailySchedule.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `task-item id-text-${item.id}`;
+                div.innerHTML = `<span class="task-time">${item.start} - ${item.end}</span><span class="task-name">${item.name}</span>`;
+                scheduleList.appendChild(div);
+            });
+        }
+        displaySchedule();
+
+        // 2. Setup Voice Synthesis (Speaking Back)
+        function speak(text) {
+            window.speechSynthesis.cancel(); // Stop any current speech
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Attempt to find a British male voice natively installed on the device
+            const voices = window.speechSynthesis.getVoices();
+            const britishVoice = voices.find(v => v.lang.includes('en-GB') && v.name.toLowerCase().includes('google')) || 
+                                 voices.find(v => v.lang.includes('en-GB')) || 
+                                 voices[0];
+            
+            if (britishVoice) utterance.voice = britishVoice;
+            utterance.pitch = 0.9; // Slightly deeper voice
+            utterance.rate = 1.0;
+
+            utterance.onstart = () => appContainer.className = "container speaking";
+            utterance.onend = () => {
+                appContainer.className = "container";
+                startListening(); // Resume listening for commands after finishing speech
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 3. Setup Voice Recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                appContainer.className = "container listening";
+                statusText.innerText = "System online. Listening...";
+            };
+
+            recognition.onerror = (e) => {
+                console.error(e);
+                appContainer.className = "container";
+                // Quick restart if it times out
+                setTimeout(startListening, 1000);
+            };
+
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript.toLowerCase();
+                statusText.innerText = `Heard: "${command}"`;
+                processCommand(command);
+            };
+        } else {
+            alert("Your browser does not support built-in speech tracking. Please use Chrome or Safari.");
+        }
+
+        function startListening() {
+            if (recognition) {
+                try { recognition.start(); } catch(e) {}
+            }
+        }
+
+        // 4. Brain Logic: Process Voice Commands
+        function processCommand(cmd) {
+            appContainer.className = "container";
+
+            // Command Type A: Asking what to do right now
+            if (cmd.includes('what should i do') || cmd.includes('schedule') || cmd.includes('time table') || cmd.includes('status')) {
+                const now = new Date();
+                const currentTimeString = now.toTimeString().substring(0,5); // "HH:MM" format
+                
+                // Find matching event from data array
+                let currentAction = dailySchedule.find(item => currentTimeString >= item.start && currentTimeString <= item.end);
+
+                // Clear previous active text highlight styles
+                document.querySelectorAll('.task-item').forEach(el => el.classList.remove('active'));
+
+                if (currentAction) {
+                    const activeElement = document.querySelector(`.id-text-${currentAction.id}`);
+                    if (activeElement) activeElement.classList.add('active');
